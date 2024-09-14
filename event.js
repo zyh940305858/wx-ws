@@ -1,48 +1,38 @@
 const os = require('os');
 const { generateRandomNumber } = require('./util');
+const { onNewChatMessage } = require('./openai');
 
 class Event {
-    constructor(data, ws) {
+    constructor(data, enqueueMessage, receiveResponse) {
         this.id = generateRandomNumber(9);
-        this.ws = ws;
-        if (Buffer.isBuffer(data)) {
-            this.data = JSON.parse(data.toString('utf-8'));
-        } else {
-            this.data = JSON.parse(data);
-        }
-        console.log(this.data)
+        this.enqueueMessage = enqueueMessage;
+        this.onNewChatMessage = onNewChatMessage;
+        this.receiveResponse = receiveResponse;
+        this.data = JSON.parse(data.toString('utf-8'));
         this.handleEventType();
     }
 
     handleEventType() {
         if (this.data.hasOwnProperty('CurrentPacket')) {
-            const { CurrentPacket: { Data = {} } = {} } = this.data;
-            switch (Data && Data.EventName) {
-                case 'ON_EVENT_MSG_NEW':
-                    this.handleMsgType(Data.AddMsg || {})
-                    break;
-                case 'ON_EVENT_SNS_NEW':
-                    // const { SnsObject } = Data;
-                    break;
+            const Data = this.data['CurrentPacket']['Data'] || {};
+            if (Data && Data.EventName === 'ON_EVENT_MSG_NEW') {
+                console.log(JSON.stringify(this.data));
+                this.handleMsgType(Data.AddMsg || {});
             }
-        }
-        // 不进行处理
-        if (this.data.hasOwnProperty('CgiBaseResponse')) {
-            this.handleResponse()
         }
     }
 
     handleMsgType(msgData) {
         switch (msgData.MsgType) {
             case 1:
-                this.handleTextMsg(msgData)
+                this.handleTextMsg(msgData);
                 break;
         }
     }
 
-    handleTextMsg(textMsgData) {
-        const { FromUserName = '', ActionUserName = '' } = textMsgData;
-        if (FromUserName.indexOf('@chatroom') > -1 && ActionUserName === 'wxid_lgzu1t90m9qp22') {
+    async handleTextMsg(textMsgData) {
+        const { FromUserName = '', ToUserName = '', Content = '', ActionUserName = '' } = textMsgData;
+        if (FromUserName.indexOf('22983423121@chatroom') > -1 && Content === '服务器信息' && ActionUserName === 'wxid_lgzu1t90m9qp22') {
             const load = os.loadavg();
             const cores = os.cpus().length;
             const totalMem = os.totalmem();
@@ -50,7 +40,7 @@ class Event {
             const usedMem = totalMem - freeMem;
             const usedMemPercentage = ((usedMem) / totalMem * 100).toFixed(2);
             const uptimeInHours = os.uptime() / 3600;
-            this.ws.send(JSON.stringify({
+            await this.enqueueMessage({
                 "ReqId": this.id,
                 "BotWxid": this.data && this.data.CurrentWxid,
                 "CgiCmd": 522,
@@ -64,12 +54,23 @@ class Event {
                     "MsgType": 1,
                     "AtUsers": ""
                 }
-            }))
+            });
         }
-    }
-    // 不处理
-    handleResponse() {
-
+        if (FromUserName.indexOf('22983423121@chatroom') > -1 && ToUserName === 'wxid_bzbubzyg5s1912' && Content.indexOf('@') !== -1) {
+            await this.onNewChatMessage(ActionUserName, Content.split(' ')[1], async (reply) => {
+                await this.enqueueMessage({
+                    "ReqId": this.id,
+                    "BotWxid": this.data && this.data.CurrentWxid,
+                    "CgiCmd": 522,
+                    "CgiRequest": {
+                        "ToUserName": FromUserName,
+                        "Content": reply,
+                        "MsgType": 1,
+                        "AtUsers": ""
+                    }
+                })
+            })
+        }
     }
 }
 

@@ -23,3 +23,6 @@ out.log*
 *.njsproj
 *.sln
 *.sw*
+
+# pm2
+ecosystem.config.js
