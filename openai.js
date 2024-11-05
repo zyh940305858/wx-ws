@@ -34,7 +34,7 @@ async function handleMessage(userId, userInput) {
     try {
         // 调用 OpenAI API 获取回复
         const response = await instance.post('/v1/chat/completions', {
-            model: "gpt-3.5-turbo",  // 或者 "gpt-4" 模型
+            model: "gpt-4o",  // 或者 "gpt-4" 模型
             messages: messages
         });
 

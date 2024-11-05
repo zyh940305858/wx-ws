@@ -3,7 +3,7 @@ const { Queue } = require('async-await-queue');
 const Event = require('./event');
 
 const ws = new WebSocket(`${process.env.WX_WSS}/${process.env.WX_ID}/${process.env.SERCURITY_CODE}`);
-const messageQueue = new Queue(1);
+const messageQueue = new Queue(5);
 
 ws.on('open', () => {
     console.log('已连接到服务器');
@@ -29,9 +29,6 @@ async function sendMessage(message) {
     if (ws.readyState === WebSocket.OPEN) {
         const jsonMessage = JSON.stringify(message);
         ws.send(jsonMessage);
-        // const response = await receiveResponse();
-        // console.log(response,'receiveResponse');
-        // return response;
     } else {
         console.log('连接已关闭');
     }

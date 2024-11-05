@@ -13,6 +13,8 @@ yarn-debug.log*
 yarn-error.log*
 err.log*
 out.log*
+err-0.log*
+out-0.log*
 
 # Editor directories and files
 .project
